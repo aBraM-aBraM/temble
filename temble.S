@@ -54,6 +54,16 @@ read_source_file:
     cmp $-1, %eax
     je fatal_errno
 
+    lea buffer, %eax
+
+    cmpl $1, g_verbose
+    jne read_source_file_finish
+
+    push %eax
+    call printf
+    addl $4, %esp
+
+    read_source_file_finish:
     ret
 
 argparse:
@@ -118,7 +128,6 @@ main:
     call argparse
 
     call read_source_file
-
 
     push $0
 finish:
