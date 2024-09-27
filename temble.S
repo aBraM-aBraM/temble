@@ -6,7 +6,6 @@ buffer: .space 4096
 .section .data
 g_verbose: .int 0
 
-CSTRUC_STAT_SIZE: .int 88
 CSTRUCT_STAT_ST_SIZE_OFFSET: .int 44
 
 argparse_verbose: .asciz "-v"
@@ -32,7 +31,10 @@ fatal_errno:
 read_source_file:
     # open file to compile
     # expects filename in %eax
+    
+    ENTER $92, $0 # 88 = fstat struct size, 4 = fd
 
+    read_content_open:
     push $0 # readonly
     push %eax
     call open
@@ -42,6 +44,21 @@ read_source_file:
     # check fd
     cmp $0, %eax
     je fatal_errno
+
+    read_content_fstat:
+    mov %eax, -4(%ebp) # save fd
+
+    push %esp # ebp - 88(struct fstat) - 4(fd)
+    push %eax
+    call fstat
+
+    addl $8, %esp
+
+    cmp $0, %eax
+    jne fatal_errno
+
+    read_content:
+    mov -4(%ebp), %eax # get fd
 
     push $4096 # count 
     lea buffer, %ebx
@@ -54,7 +71,7 @@ read_source_file:
     cmp $-1, %eax
     je fatal_errno
 
-
+    read_content_verbose:
     cmpl $1, g_verbose
     jne read_source_file_finish
     lea buffer, %eax
@@ -64,6 +81,7 @@ read_source_file:
     addl $4, %esp
 
     read_source_file_finish:
+    leave
     ret
 
 argparse:
@@ -120,6 +138,7 @@ argparse:
     argparse_finish:
         pop %eax
         ret
+
 
 main:
     push %ebp
