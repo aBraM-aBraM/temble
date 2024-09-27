@@ -22,6 +22,7 @@ LOG_SYNTAX: .asciz  "syntax: ./temble <source-file> [-v]\n"
 .extern perror
 .extern strcmp
 .extern malloc
+.extern free
 
 
 fatal_errno:
@@ -43,6 +44,7 @@ verbose_log:
 read_src:
     # open file to compile
     # expects filename in %eax
+    # returns file content in %eax (allocated via malloc)
     
     ENTER $92, $0 # 88 = fstat struct size, 4 = fd
 
@@ -83,6 +85,7 @@ read_src:
     movl 44(%esp), %eax # get filesize
     push %eax
     call malloc
+    addl $4, %esp
 
     cmp $0, %eax
     je fatal_errno
@@ -111,6 +114,7 @@ read_src:
     call verbose_log 
     addl $4, %esp
 
+    mov -8(%ebp), %eax
     read_src_finish:
     leave
     ret
@@ -178,6 +182,10 @@ main:
     call argparse
 
     call read_src
+
+    push %eax
+    call free
+    addl $4, %esp
 
     push $0
 finish:
