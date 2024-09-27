@@ -19,6 +19,8 @@ log_syntax: .asciz  "syntax: ./temble <source-file> [-v]\n"
 .extern perror
 .extern strcmp
 
+.extern print_from_lexer
+
 fatal_errno:
 # prints errno using strerror
 # and exits using %eax as exit code
@@ -118,6 +120,8 @@ main:
     call argparse
 
     call read_source_file
+
+    call print_from_lexer
 
     push $0
 finish:
