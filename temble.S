@@ -4,8 +4,11 @@
 buffer: .space 4096
 
 .section .data
-filename: .asciz    "example.txt"
-log_syntax: .asciz  "syntax: ./temble <source-file>\n"
+g_verbose: .int 0
+
+argparse_verbose: .asciz "-v"
+log_verbose: .asciz "running verbose\n"
+log_syntax: .asciz  "syntax: ./temble <source-file> [-v]\n"
 
 .section .text
 .extern open
@@ -14,6 +17,7 @@ log_syntax: .asciz  "syntax: ./temble <source-file>\n"
 .extern exit
 .extern printf
 .extern perror
+.extern strcmp
 
 fatal_errno:
 # prints errno using strerror
@@ -55,11 +59,13 @@ read_source_file:
 argparse:
     # checks that a filename argument was given
     # returns filename in %eax
-    mov 0x8(%ebp), %eax
+
+    mov 0x8(%ebp), %eax # get argv
 
     cmp $2, %eax
     jge argparse_contains_filename
 
+argparse_syntax:
     lea log_syntax, %eax
     push %eax
     call printf
@@ -71,10 +77,38 @@ argparse:
 
 argparse_contains_filename:
 
-    # retrieve argv[1]
+    # retrieve argv
     mov 0xc(%ebp), %ebx
-    mov 0x4(%ebx), %eax
 
+    # retrieve argv[1]
+    push 0x4(%ebx)
+
+
+    cmp $3, %eax
+    jl argparse_finish
+
+    # check if argv[1] == "-v"
+    mov 0x8(%ebx), %ebx
+    push %ebx
+    lea argparse_verbose, %ebx
+    push %ebx
+    call strcmp
+
+    addl $8, %esp
+
+    cmp $0, %eax
+    jne argparse_syntax
+
+    movl $1, g_verbose
+
+    lea log_verbose, %eax
+    push %eax
+    call printf
+
+    addl $4, %esp
+
+argparse_finish:
+    pop %eax
     ret
 
 main:
