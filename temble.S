@@ -29,10 +29,7 @@ fatal_errno:
     push %eax
     jmp finish
 
-main:
-    push %ebp
-    mov %esp, %ebp
-
+read_source_file:
     # open file to compile
     push $0 # readonly
     lea filename, %eax
@@ -56,6 +53,14 @@ main:
     cmp $-1, %eax
     je fatal_errno
 
+    ret
+
+
+main:
+    push %ebp
+    mov %esp, %ebp
+
+    call read_source_file
 
     push $0
 finish:
