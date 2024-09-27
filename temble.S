@@ -9,8 +9,9 @@ g_verbose: .int 0
 CSTRUCT_STAT_ST_SIZE_OFFSET: .int 44
 
 argparse_verbose: .asciz "-v"
-log_verbose: .asciz "running verbose\n"
-log_syntax: .asciz  "syntax: ./temble <source-file> [-v]\n"
+LOG_VERBOSE: .asciz "running verbose\n"
+LOG_FILESIZE: .asciz "source filesize: %d\n"
+LOG_SYNTAX: .asciz  "syntax: ./temble <source-file> [-v]\n"
 
 .section .text
 .extern open
@@ -28,13 +29,23 @@ fatal_errno:
     push $1
     jmp finish
 
-read_source_file:
+verbose_log:
+    # calls printf if verbose
+    cmpl $1, g_verbose
+    jne verbose_log_finish
+
+    jmp printf # tail call optimiziations
+
+    verbose_log_finish:
+        ret
+
+read_src:
     # open file to compile
     # expects filename in %eax
     
     ENTER $92, $0 # 88 = fstat struct size, 4 = fd
 
-    read_content_open:
+    # open file
     push $0 # readonly
     push %eax
     call open
@@ -45,7 +56,7 @@ read_source_file:
     cmp $0, %eax
     je fatal_errno
 
-    read_content_fstat:
+    # fstat file
     mov %eax, -4(%ebp) # save fd
 
     push %esp # ebp - 88(struct fstat) - 4(fd)
@@ -57,7 +68,16 @@ read_source_file:
     cmp $0, %eax
     jne fatal_errno
 
-    read_content:
+    movl 44(%esp), %eax
+
+    lea LOG_FILESIZE, %ebx
+    push %eax
+    push %ebx
+    call verbose_log
+    
+    addl $8, %esp
+
+    # read content
     mov -4(%ebp), %eax # get fd
 
     push $4096 # count 
@@ -71,16 +91,14 @@ read_source_file:
     cmp $-1, %eax
     je fatal_errno
 
-    read_content_verbose:
-    cmpl $1, g_verbose
-    jne read_source_file_finish
+    # print source on verbose
     lea buffer, %eax
 
     push %eax
-    call printf
+    call verbose_log 
     addl $4, %esp
 
-    read_source_file_finish:
+    read_src_finish:
     leave
     ret
 
@@ -94,7 +112,7 @@ argparse:
     jge argparse_contains_filename
 
     argparse_syntax:
-        lea log_syntax, %eax
+        lea LOG_SYNTAX, %eax
         push %eax
         call printf
 
@@ -129,9 +147,9 @@ argparse:
 
         movl $1, g_verbose
 
-        lea log_verbose, %eax
+        lea LOG_VERBOSE, %eax
         push %eax
-        call printf
+        call verbose_log
 
         addl $4, %esp
 
@@ -146,7 +164,7 @@ main:
 
     call argparse
 
-    call read_source_file
+    call read_src
 
     push $0
 finish:
