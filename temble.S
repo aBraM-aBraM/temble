@@ -1,7 +1,6 @@
 .globl main
 
 .section .bss
-buffer: .space 4096
 
 .section .data
 g_verbose: .int 0
@@ -11,6 +10,7 @@ CSTRUCT_STAT_ST_SIZE_OFFSET: .int 44
 argparse_verbose: .asciz "-v"
 LOG_VERBOSE: .asciz "running verbose\n"
 LOG_FILESIZE: .asciz "source filesize: %d\n"
+LOG_SOURCECODE: .asciz "source code:\n%s"
 LOG_SYNTAX: .asciz  "syntax: ./temble <source-file> [-v]\n"
 
 .section .text
@@ -21,6 +21,7 @@ LOG_SYNTAX: .asciz  "syntax: ./temble <source-file> [-v]\n"
 .extern printf
 .extern perror
 .extern strcmp
+.extern malloc
 
 
 fatal_errno:
@@ -68,7 +69,7 @@ read_src:
     cmp $0, %eax
     jne fatal_errno
 
-    movl 44(%esp), %eax
+    movl 44(%esp), %eax # get filesize
 
     lea LOG_FILESIZE, %ebx
     push %eax
@@ -77,11 +78,22 @@ read_src:
     
     addl $8, %esp
 
+    # malloc file content
+
+    movl 44(%esp), %eax # get filesize
+    push %eax
+    call malloc
+
+    cmp $0, %eax
+    je fatal_errno
+
+    mov %eax, -8(%ebp) # save filesize overriding stat struct (don't need it anymore) 
+
     # read content
     mov -4(%ebp), %eax # get fd
 
+    mov -8(%ebp), %ebx
     push $4096 # count 
-    lea buffer, %ebx
     push %ebx  # buf
     push %eax  # fd
     call read
@@ -92,9 +104,10 @@ read_src:
     je fatal_errno
 
     # print source on verbose
-    lea buffer, %eax
-
+    mov -8(%ebp), %eax
+    lea LOG_SOURCECODE, %ebx
     push %eax
+    push %ebx
     call verbose_log 
     addl $4, %esp
 
