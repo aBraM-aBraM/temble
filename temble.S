@@ -54,10 +54,10 @@ read_source_file:
     cmp $-1, %eax
     je fatal_errno
 
-    lea buffer, %eax
 
     cmpl $1, g_verbose
     jne read_source_file_finish
+    lea buffer, %eax
 
     push %eax
     call printf
