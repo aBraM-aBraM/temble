@@ -13,19 +13,14 @@ log_syntax: .asciz  "syntax: ./temble <source-file>\n"
 .extern fstat
 .extern exit
 .extern printf
-.extern strerror
 .extern perror
-.extern __errno_location
 
 fatal_errno:
 # prints errno using strerror
 # and exits using %eax as exit code
-    call __errno_location
-    mov (%eax), %eax
-    push %eax
-    call strerror
-    push %eax
-    call printf
+
+    push $0
+    call perror 
 
     push $1
     jmp finish
