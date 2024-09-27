@@ -5,7 +5,7 @@ buffer: .space 4096
 
 .section .data
 filename: .asciz    "example.txt"
-
+log_syntax: .asciz  "syntax: ./temble <source-file>\n"
 
 .section .text
 .extern open
@@ -14,6 +14,7 @@ filename: .asciz    "example.txt"
 .extern exit
 .extern printf
 .extern strerror
+.extern perror
 .extern __errno_location
 
 fatal_errno:
@@ -26,13 +27,14 @@ fatal_errno:
     push %eax
     call printf
 
-    push %eax
+    push $1
     jmp finish
 
 read_source_file:
     # open file to compile
+    # expects filename in %eax
+
     push $0 # readonly
-    lea filename, %eax
     push %eax
     call open
 
@@ -55,10 +57,36 @@ read_source_file:
 
     ret
 
+argparse:
+    # checks that a filename argument was given
+    # returns filename in %eax
+    mov 0x8(%ebp), %eax
+
+    cmp $2, %eax
+    jge argparse_contains_filename
+
+    lea log_syntax, %eax
+    push %eax
+    call printf
+
+    addl $4, %esp
+
+    push $1
+    jmp finish
+
+argparse_contains_filename:
+
+    # retrieve argv[1]
+    mov 0xc(%ebp), %ebx
+    mov 0x4(%ebx), %eax
+
+    ret
 
 main:
     push %ebp
     mov %esp, %ebp
+
+    call argparse
 
     call read_source_file
 
