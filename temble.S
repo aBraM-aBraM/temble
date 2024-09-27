@@ -7,7 +7,7 @@ g_verbose: .int 0
 
 CSTRUCT_STAT_ST_SIZE_OFFSET: .int 44
 
-argparse_verbose: .asciz "-v"
+tmbl_argparse_verbose: .asciz "-v"
 LOG_VERBOSE: .asciz "running verbose\n"
 LOG_FILESIZE: .asciz "source filesize: %d\n"
 LOG_SOURCECODE: .asciz "source code:\n%s"
@@ -24,6 +24,8 @@ LOG_SYNTAX: .asciz  "syntax: ./temble <source-file> [-v]\n"
 .extern malloc
 .extern free
 
+.extern tmbl_lex
+
 
 fatal_errno:
     push $0
@@ -31,17 +33,18 @@ fatal_errno:
     push $1
     jmp finish
 
-verbose_log:
+.global tmbl_verbose_log
+tmbl_verbose_log:
     # calls printf if verbose
     cmpl $1, g_verbose
-    jne verbose_log_finish
+    jne tmbl_verbose_log_finish
 
     jmp printf # tail call optimiziations
 
-    verbose_log_finish:
+    tmbl_verbose_log_finish:
         ret
 
-read_src:
+tmbl_read_src:
     # open file to compile
     # expects filename in %eax
     # returns file content in %eax (allocated via malloc)
@@ -76,7 +79,7 @@ read_src:
     lea LOG_FILESIZE, %ebx
     push %eax
     push %ebx
-    call verbose_log
+    call tmbl_verbose_log
     
     addl $8, %esp
 
@@ -111,24 +114,24 @@ read_src:
     lea LOG_SOURCECODE, %ebx
     push %eax
     push %ebx
-    call verbose_log 
+    call tmbl_verbose_log 
     addl $4, %esp
 
     mov -8(%ebp), %eax
-    read_src_finish:
+    tmbl_read_src_finish:
     leave
     ret
 
-argparse:
+tmbl_argparse:
     # checks that a filename argument was given
     # returns filename in %eax
 
     mov 0x8(%ebp), %eax # get argv
 
     cmp $2, %eax
-    jge argparse_contains_filename
+    jge tmbl_argparse_contains_filename
 
-    argparse_syntax:
+    tmbl_argparse_syntax:
         lea LOG_SYNTAX, %eax
         push %eax
         call printf
@@ -138,7 +141,7 @@ argparse:
         push $1
         jmp finish
 
-    argparse_contains_filename:
+    tmbl_argparse_contains_filename:
 
         # retrieve argv
         mov 0xc(%ebp), %ebx
@@ -148,41 +151,49 @@ argparse:
 
 
         cmp $3, %eax
-        jl argparse_finish
+        jl tmbl_argparse_finish
 
         # check if argv[1] == "-v"
         mov 0x8(%ebx), %ebx
         push %ebx
-        lea argparse_verbose, %ebx
+        lea tmbl_argparse_verbose, %ebx
         push %ebx
         call strcmp
 
         addl $8, %esp
 
         cmp $0, %eax
-        jne argparse_syntax
+        jne tmbl_argparse_syntax
 
         movl $1, g_verbose
 
         lea LOG_VERBOSE, %eax
         push %eax
-        call verbose_log
+        call tmbl_verbose_log
 
         addl $4, %esp
 
-    argparse_finish:
+    tmbl_argparse_finish:
         pop %eax
         ret
 
 
 main:
-    push %ebp
-    mov %esp, %ebp
+    enter $4, $0
 
-    call argparse
 
-    call read_src
+    call tmbl_argparse
 
+    call tmbl_read_src
+
+    mov %eax, -4(%ebp) # save src
+
+    push %eax
+    call tmbl_lex
+    addl $4, %esp
+
+
+    mov -4(%ebp), %eax # free src
     push %eax
     call free
     addl $4, %esp
@@ -190,3 +201,4 @@ main:
     push $0
 finish:
     call exit
+    leave
