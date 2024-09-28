@@ -11,6 +11,7 @@ tmbl_argparse_verbose: .asciz "-v"
 LOG_VERBOSE: .asciz "running verbose\n"
 LOG_FILESIZE: .asciz "source filesize: %d\n"
 LOG_SOURCECODE: .asciz "source code:\n%s"
+LOG_READ_COUNT_MATCH: .asciz "read count %d smaller than filesize %d\n"
 LOG_SYNTAX: .asciz  "syntax: ./temble <source-file> [-v]\n"
 
 .section .text
@@ -97,7 +98,7 @@ tmbl_read_src:
     mov %eax, -12(%ebp) # save buffer overriding stat struct (don't need it anymore) 
 
     # read content %eax already buf
-    mov -4(%ebp), %ebx # get fd
+    mov -4(%ebp), %ebx # fd
     mov -8(%ebp), %ecx # filesize
     
     push %ecx # count 
@@ -109,6 +110,22 @@ tmbl_read_src:
     cmp $-1, %eax
     je fatal_errno
 
+    mov -8(%ebp), %ecx # filesize
+    cmp %eax, %ecx
+    je tmbl_read_src_read_success
+
+    lea LOG_READ_COUNT_MATCH, %ebx
+    push %ecx
+    push %eax
+    push %ebx
+    call printf
+    addl $12, %esp
+
+    push $1
+    jmp finish
+
+    tmbl_read_src_read_success:
+
     # print source on verbose 
     mov -12(%ebp), %eax
     lea LOG_SOURCECODE, %ebx
@@ -117,7 +134,8 @@ tmbl_read_src:
     call tmbl_verbose_log 
     addl $4, %esp
 
-    mov -8(%ebp), %eax
+    mov -12(%ebp), %eax # src
+    mov -8(%ebp), %ebx # filesize
     tmbl_read_src_finish:
     leave
     ret
