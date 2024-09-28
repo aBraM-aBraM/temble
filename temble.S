@@ -75,17 +75,18 @@ tmbl_read_src:
     jne fatal_errno
 
     movl 44(%esp), %eax # get filesize
+    mov %eax, -8(%ebp) # save filesize {overriding stat struct because I don't need it anymore}
 
     lea LOG_FILESIZE, %ebx
     push %eax
     push %ebx
-    call tmbl_verbose_log
-    
+    call tmbl_verbose_log    
     addl $8, %esp
+
 
     # malloc file content
 
-    movl 44(%esp), %eax # get filesize
+    movl -8(%ebp), %eax # get filesize
     push %eax
     call malloc
     addl $4, %esp
@@ -93,24 +94,23 @@ tmbl_read_src:
     cmp $0, %eax
     je fatal_errno
 
-    mov %eax, -8(%ebp) # save filesize overriding stat struct (don't need it anymore) 
+    mov %eax, -12(%ebp) # save buffer overriding stat struct (don't need it anymore) 
 
-    # read content
-    mov -4(%ebp), %eax # get fd
-
-    mov -8(%ebp), %ebx
-    push $4096 # count 
-    push %ebx  # buf
-    push %eax  # fd
+    # read content %eax already buf
+    mov -4(%ebp), %ebx # get fd
+    mov -8(%ebp), %ecx # filesize
+    
+    push %ecx # count 
+    push %eax # buf
+    push %ebx # fd
     call read
-
     addl $12, %esp
 
     cmp $-1, %eax
     je fatal_errno
 
-    # print source on verbose
-    mov -8(%ebp), %eax
+    # print source on verbose 
+    mov -12(%ebp), %eax
     lea LOG_SOURCECODE, %ebx
     push %eax
     push %ebx
@@ -188,15 +188,15 @@ main:
 
     mov %eax, -4(%ebp) # save src
 
-    push %eax
-    call tmbl_lex
-    addl $4, %esp
+    # push %eax
+    # call tmbl_lex
+    # addl $4, %esp
 
 
-    mov -4(%ebp), %eax # free src
-    push %eax
-    call free
-    addl $4, %esp
+    # mov -4(%ebp), %eax # free src
+    # push %eax
+    # call free
+    # addl $4, %esp
 
     push $0
 finish:

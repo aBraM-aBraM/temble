@@ -68,6 +68,7 @@ func main() int:
 * Lexer finds all tokens. Size is unknown upon start thus must be a linked list
 * Parses validates tokens' order must make sense (this is a list of what is expected to follow what)
     * empty/`\t` 
+        * `\n` - empty line
         * `func` - func define
             * `SYMBOL` - func name
                 * `(` - func params start (params are optional)
@@ -75,22 +76,22 @@ func main() int:
                         * `,`
                         * `)`
                             * `type` - return type
-                                * `:` - func content scope [X]
+                                * `:\n` - func content scope [X]
         * `SYMBOL: (str/int)` - var-define / assignment
             * `=`
                 * `SYMBOL` / int literal - other variable
                     * binary operator
-                        * `SYMBOL` / int literal [X]
+                        * `SYMBOL` / int literal + `\n` [X]
         * `if` - branch
             * `SYMBOL` (int) / condition operator
-                * `:` - branch content scope [X]
+                * `:\n` - branch content scope [X]
         * `return` - return value of current function
-            * `SYMBOL`  / literal 
+            * `SYMBOL`  / literal + `\n`
         * `while` - loop
             * `SYMBOL` (int) / condition operator
-                * `:` - loop content scope
+                * `:\n` - loop content scope
         * `asm` - start inline assembly
-            * `:` - inline asm content code [X]
-        * `ASM_CONTENT` - inline assembly content in inline assembly scope
+            * `:\n` - inline asm content code [X]
+        * `ASM_CONTENT\n` - inline assembly content in inline assembly scope
 * Symbol Table Construction - while checking parser creates a map between symbol names to line numbers (linked list of pointer:int)
 * Code Generation

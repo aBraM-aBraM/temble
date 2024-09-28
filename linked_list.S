@@ -1,6 +1,6 @@
 
 .section .data
-LOG_NODE_FMT: .asciz "%x {%x %d %x } - "
+LOG_NODE_FMT: .asciz "%x {%x [%d] %x } - "
 LOG_NODE_LEN: .asciz "list length: %d\n"
 
 .section .text
@@ -10,6 +10,7 @@ LOG_NODE_LEN: .asciz "list length: %d\n"
 
 .extern tmbl_verbose_log
 
+.global tmbl_node_create
 tmbl_node_create:
     # creates node params (value: int)
     # prev: *node 4 bytes
@@ -33,6 +34,7 @@ tmbl_node_create:
     leave
     ret
 
+.global tmbl_node_add_next
 tmbl_node_add_next:
     # params (node*, next_value: int)
     enter $8, $0
@@ -52,6 +54,7 @@ tmbl_node_add_next:
     leave
     ret
 
+.global tmbl_node_len
 tmbl_node_len:
     # params (node*)
     enter $4, $0
@@ -73,7 +76,7 @@ tmbl_node_len:
         ret
 
 
-
+.global tmbl_node_verbose
 tmbl_node_verbose:
     # prints entire nodes on verbose
     # params (node*)
@@ -126,28 +129,5 @@ tmbl_node_verbose:
         jmp tmbl_node_verbose_loop
 
     tmbl_node_verbose_finish:
-    leave
-    ret
-
-.global tmbl_lex
-tmbl_lex:
-    enter $8, $0 # space for src (char*) and token list (node)
-
-    push $1 # 1st value
-    call tmbl_node_create
-    addl $4, %esp
-
-    mov %eax, -4(%ebp) # save list locally
-
-    push $2 # 2nd value
-    push %eax
-    call tmbl_node_add_next
-    addl $8, %esp
-
-    mov -4(%ebp), %eax
-    push %eax
-    call tmbl_node_verbose
-    addl $4, %esp
-
     leave
     ret
