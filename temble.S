@@ -197,7 +197,7 @@ tmbl_argparse:
 
 
 main:
-    enter $4, $0
+    enter $8, $0
 
 
     call tmbl_argparse
@@ -205,16 +205,17 @@ main:
     call tmbl_read_src
 
     mov %eax, -4(%ebp) # save src
+    mov %ebx, -8(%ebp) # save src filesize
 
-    # push %eax
-    # call tmbl_lex
-    # addl $4, %esp
+    push %ebx
+    push %eax
+    call tmbl_lex
+    addl $8, %esp
 
-
-    # mov -4(%ebp), %eax # free src
-    # push %eax
-    # call free
-    # addl $4, %esp
+    mov -4(%ebp), %eax # free src
+    push %eax
+    call free
+    addl $4, %esp
 
     push $0
 finish:

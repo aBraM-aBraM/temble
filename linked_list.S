@@ -1,6 +1,6 @@
 
 .section .data
-LOG_NODE_FMT: .asciz "%x {%x [%d] %x } - "
+LOG_NODE_FMT: .asciz "%x {%x [%s] %x } - "
 LOG_NODE_LEN: .asciz "list length: %d\n"
 
 .section .text
@@ -16,7 +16,6 @@ tmbl_node_create:
     # prev: *node 4 bytes
     # value: *char 4 bytes
     # node: *node 4 bytes
-
     enter $4, $0
 
     push $12
@@ -36,7 +35,7 @@ tmbl_node_create:
 
 .global tmbl_node_add_next
 tmbl_node_add_next:
-    # params (node*, next_value: int)
+    # params (node*, next_value: int) -> eax = new-next-node
     enter $8, $0
 
     # input node into ebx
@@ -56,7 +55,7 @@ tmbl_node_add_next:
 
 .global tmbl_node_len
 tmbl_node_len:
-    # params (node*)
+    # params (node*) -> eax = new-node
     enter $4, $0
 
     mov 0x8(%ebp), %eax
