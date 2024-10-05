@@ -32,13 +32,13 @@ LENXLINE_STATEMENT_END: .int -1
 .extern printf
 
 .extern tmbl_node_create
-.extern tmbl_node_add_next
-.extern tmbl_node_verbose
+.extern tmbl_node_append
+.extern tmbl_node_print
 
 tmbl_lexline:
     push %ebp
     mov %esp, %ebp
-    sub $4, %esp
+    sub $8, %esp
     
     mov 0x8(%ebp), %eax # src
     mov 0xc(%ebp), %ebx # src length
@@ -46,48 +46,61 @@ tmbl_lexline:
 
 
     mov %eax, -4(%ebp) # source start pointer
+    mov %eax, -8(%ebp) # current token start ptr
+    mov %eax, %edx # token start pointer
 
     statement_loop:
-        mov %eax, %edx # token start pointer
 
-        cmp $'\n', %eax
+        cmpb $'\n', (%eax)
         je line_end
-        cmp $' ', %eax
+        cmpb $' ', (%eax)
         je token_end
-        
+        jmp continue
+
         line_end:
-            mov LENXLINE_STATEMENT_END, %eax
-            mov %eax, %edx
-            inc %edx
+            inc %eax # src ptr after \n
+            mov %eax, -8(%ebp) # token_ptr = src_ptr = char after newline
 
             # create another tokens list
             push $1
             push %ecx
-            call tmbl_node_add_next
+            call tmbl_node_append
             addl $8, %esp
 
-            mov %eax, %ecx
-            mov %edx, %eax
+            mov %eax, %ecx # statement_list = statement_list->next
+            mov -8(%ebp), %eax # load src_ptr
             jmp continue
 
         token_end:
             movl $0, (%eax) # null terminate token instead of space
-
+            inc %eax # src ptr after ' '
+            
+            # setup first param
+            mov -8(%ebp), %edx # load token ptr
             push %edx # null-terminated token
-            mov 4(%ecx), %edx
+
+            # store new value            
+            mov %eax, -8(%ebp) # token_ptr = src_ptr = char after space
+
+
+            mov 4(%ecx), %edx # load tokens list
             push %edx
-            call tmbl_node_add_next
+            call tmbl_node_append # TODO: improve to append rather than add-next maybe change lists to keep length
             addl $8, %esp
+
+            mov -8(%ebp), %eax # load token_ptr to src ptr 
 
         continue:
             inc %eax
             mov %eax, %edx # new src pointer
             subl -4(%ebp), %edx # get index from src start
+            mov 0xc(%ebp), %ebx # src length
             cmp %ebx, %edx # check if finished
 
             jle statement_loop
             
         mov $0, %eax
+        leave
         ret
 
 
@@ -122,7 +135,7 @@ tmbl_lex:
 
     mov -4(%ebp), %ecx
     mov 4(%ecx), %ecx # first list of tokens
-    call tmbl_node_verbose 
+    call tmbl_node_print 
     addl $4, %esp
 
     leave
